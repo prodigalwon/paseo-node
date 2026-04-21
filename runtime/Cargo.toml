@@ -1,0 +1,226 @@
+[package]
+name = "paseo-runtime"
+description = "Unified Paseo parachain runtime: PNS + ZK-PKI + Secret Squirrel."
+version = "0.1.0"
+license = "Apache-2.0"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+edition.workspace = true
+publish = false
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[lints]
+workspace = true
+
+[dependencies]
+codec = { features = ["derive"], workspace = true }
+scale-info = { features = ["derive", "serde"], workspace = true }
+serde_json = { workspace = true, default-features = false, features = ["alloc"] }
+
+# frame
+frame-executive = { workspace = true }
+frame-metadata-hash-extension = { workspace = true }
+frame-support = { features = ["experimental"], workspace = true }
+frame-system = { workspace = true }
+frame-try-runtime = { optional = true, workspace = true }
+
+# standard pallets
+pallet-aura = { workspace = true }
+pallet-balances = { workspace = true }
+pallet-message-queue = { workspace = true }
+pallet-proxy = { workspace = true }
+pallet-sudo = { workspace = true }
+pallet-timestamp = { workspace = true }
+pallet-transaction-payment = { workspace = true }
+
+# new infra pallets (SecretSquirrel deps)
+pallet-scheduler = { workspace = true }
+pallet-authorship = { workspace = true }
+pallet-insecure-randomness-collective-flip = { workspace = true }
+
+# consensus
+pallet-grandpa = { workspace = true }
+
+# primitives
+sp-api = { workspace = true }
+sp-block-builder = { workspace = true }
+sp-consensus-aura = { features = ["serde"], workspace = true }
+sp-consensus-grandpa = { features = ["serde"], workspace = true }
+sp-core = { features = ["serde"], workspace = true }
+sp-genesis-builder = { workspace = true }
+sp-inherents = { workspace = true }
+sp-keyring = { workspace = true }
+sp-offchain = { workspace = true }
+sp-runtime = { features = ["serde"], workspace = true }
+sp-session = { workspace = true }
+sp-storage = { workspace = true }
+sp-transaction-pool = { workspace = true }
+sp-version = { features = ["serde"], workspace = true }
+
+# RPC related
+frame-system-rpc-runtime-api = { workspace = true }
+pallet-transaction-payment-rpc-runtime-api = { workspace = true }
+
+# benchmarking
+frame-benchmarking = { optional = true, workspace = true }
+frame-system-benchmarking = { optional = true, workspace = true }
+
+# ── PNS pallets ──
+pns-registrar = { workspace = true }
+pns-resolvers = { workspace = true }
+pns-types = { workspace = true }
+pns-runtime-api = { workspace = true }
+pns-marketplace = { workspace = true }
+
+# ── ZK-PKI ──
+zk-pki-pallet = { workspace = true }
+zk-pki-primitives = { workspace = true }
+# NOTE: `zk-pki-tpm`'s `test-utils` feature (which exposes
+# `zk_pki_tpm::test_mock_verifier::NoopBindingProofVerifier` — a
+# bypass-crypto verifier wired as `T::BindingProofVerifier`) is
+# forwarded by this crate's `test-attestation` feature, NOT enabled
+# unconditionally here. See [features] below; enabling
+# `test-attestation` together with `production` is a compile error.
+zk-pki-tpm = { workspace = true }
+zk-pki-integrity = { workspace = true }
+zk-pki-hip = { workspace = true }
+
+# ── Secret Squirrel ──
+pallet-secret-squirrel = { workspace = true }
+secret-squirrel-types = { workspace = true }
+secret-squirrel-runtime-api = { workspace = true }
+
+[build-dependencies]
+substrate-wasm-builder = { optional = true, workspace = true, default-features = true }
+
+[dev-dependencies]
+# In-process integration tests need std-enabled runtime primitives
+# for `TestExternalities` + `BuildStorage` + `pallet_balances`
+# genesis wiring. `zk-pki-tpm/test-utils` is already enabled above.
+sp-io = { workspace = true, default-features = true }
+pallet-balances = { workspace = true, default-features = true }
+pallet-proxy = { workspace = true, default-features = true }
+zk-pki-pallet = { workspace = true, default-features = true }
+zk-pki-primitives = { workspace = true, default-features = true }
+zk-pki-hip = { workspace = true, default-features = true }
+# P-256 signing-key for test pubkey bytes.
+p256 = { version = "0.13", features = ["std"] }
+
+[features]
+default = ["std", "test-attestation"]
+kusama = ["pns-types/kusama"]
+# TESTNET-ONLY. Enables `zk_pki_tpm::test_mock_verifier::
+# NoopBindingProofVerifier` and `TpmTestAttestationVerifier`, which
+# accept caller-controlled EK hashes and bypass all hardware
+# attestation chain verification. Present in the default feature
+# set so the testnet build keeps working without extra flags.
+#
+# NEVER enable in any runtime handling real value. `production`
+# marks such a build; the `compile_error!` in `src/lib.rs` refuses
+# to compile when both are enabled together.
+test-attestation = ["zk-pki-tpm/test-utils"]
+# Marker feature for production builds. Does not forward to any
+# child crate — its sole purpose is to be mutually exclusive with
+# `test-attestation` via the compile-time guard in `src/lib.rs`.
+# Downstream changes (swapping `T::BindingProofVerifier` to
+# `zk_pki_tpm::ProductionBindingProofVerifier`, etc.) remain a
+# separate pre-Kusama task tracked in `pki/SECURITY.md`.
+production = []
+std = [
+	"codec/std",
+	"pallet-grandpa/std",
+	"frame-benchmarking?/std",
+	"frame-executive/std",
+	"frame-metadata-hash-extension/std",
+	"frame-support/std",
+	"frame-system-benchmarking?/std",
+	"frame-system-rpc-runtime-api/std",
+	"frame-system/std",
+	"frame-try-runtime?/std",
+	"pallet-aura/std",
+	"pallet-balances/std",
+	"pallet-message-queue/std",
+	"pallet-proxy/std",
+	"pallet-sudo/std",
+	"pallet-timestamp/std",
+	"pallet-transaction-payment-rpc-runtime-api/std",
+	"pallet-transaction-payment/std",
+	"pallet-scheduler/std",
+	"pallet-authorship/std",
+	"pallet-insecure-randomness-collective-flip/std",
+	# PNS
+	"pns-registrar/std",
+	"pns-resolvers/std",
+	"pns-types/std",
+	"pns-runtime-api/std",
+	"pns-marketplace/std",
+	# ZK-PKI
+	"zk-pki-pallet/std",
+	"zk-pki-primitives/std",
+	"zk-pki-tpm/std",
+	"zk-pki-integrity/std",
+	"zk-pki-hip/std",
+	# Secret Squirrel
+	"pallet-secret-squirrel/std",
+	"secret-squirrel-types/std",
+	"secret-squirrel-runtime-api/std",
+	# primitives
+	"scale-info/std",
+	"serde_json/std",
+	"sp-api/std",
+	"sp-block-builder/std",
+	"sp-consensus-aura/std",
+	"sp-consensus-grandpa/std",
+	"sp-core/std",
+	"sp-genesis-builder/std",
+	"sp-inherents/std",
+	"sp-keyring/std",
+	"sp-offchain/std",
+	"sp-runtime/std",
+	"sp-session/std",
+	"sp-storage/std",
+	"sp-transaction-pool/std",
+	"sp-version/std",
+	"substrate-wasm-builder",
+]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system-benchmarking/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"pallet-balances/runtime-benchmarks",
+	"pallet-proxy/runtime-benchmarks",
+	"pallet-sudo/runtime-benchmarks",
+	"pallet-timestamp/runtime-benchmarks",
+	"pallet-transaction-payment/runtime-benchmarks",
+	"pallet-scheduler/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+	# PNS
+	"pns-registrar/runtime-benchmarks",
+	"pns-marketplace/runtime-benchmarks",
+	"pns-resolvers/runtime-benchmarks",
+	# ZK-PKI
+	"zk-pki-pallet/runtime-benchmarks",
+]
+try-runtime = [
+	"frame-executive/try-runtime",
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"frame-try-runtime/try-runtime",
+	"pallet-aura/try-runtime",
+	"pallet-balances/try-runtime",
+	"pallet-proxy/try-runtime",
+	"pallet-sudo/try-runtime",
+	"pallet-timestamp/try-runtime",
+	"pallet-transaction-payment/try-runtime",
+	"pallet-scheduler/try-runtime",
+	"pallet-authorship/try-runtime",
+	"pallet-insecure-randomness-collective-flip/try-runtime",
+	"pallet-grandpa/try-runtime",
+	"sp-runtime/try-runtime",
+]
+metadata-hash = ["substrate-wasm-builder/metadata-hash"]
+on-chain-release-build = ["metadata-hash", "sp-api/disable-logging"]
